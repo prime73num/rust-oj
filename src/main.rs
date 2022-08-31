@@ -2,6 +2,9 @@ use actix_web::{get, middleware::Logger, post, web, App, HttpServer, Responder};
 use env_logger;
 use log;
 
+
+use oj::post;
+
 #[get("/hello/{name}")]
 async fn greet(name: web::Path<String>) -> impl Responder {
     log::info!(target: "greet_handler", "Greeting {}", name);
@@ -28,6 +31,7 @@ async fn main() -> std::io::Result<()> {
             .service(greet)
             // DO NOT REMOVE: used in automatic testing
             .service(exit)
+            .service(post::post_jobs)
     })
     .bind(("127.0.0.1", 12345))?
     .run()
