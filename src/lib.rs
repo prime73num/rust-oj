@@ -4,7 +4,9 @@ pub mod config;
 pub mod job;
 
 use std::sync::{Mutex, Arc};
+use job::JobInfo;
 use lazy_static::lazy_static;
+use serde::Serialize;
 
 
 lazy_static!(
@@ -38,3 +40,53 @@ pub struct User {
     name: String
 }
 
+#[derive(Debug, Serialize)]
+pub struct CaseResult {
+    id: u32,
+    result: Result,
+    time: u32,
+    memory: u32,
+    info: String
+}
+
+#[derive(Debug, Serialize)]
+pub struct Response {
+    id: u32,
+    created_time: String,
+    updated_time: String,
+    submission: JobInfo,
+    state: State,
+    result: Result,
+    score: f32,
+    cases: Vec<CaseResult>
+}
+
+#[derive(Debug, Serialize)]
+pub enum State {
+    Queueing,
+    Running,
+    Finished,
+    Canceled
+}
+
+#[derive(Debug, Serialize, PartialEq)]
+pub enum Result {
+    Waiting,
+    Running,
+    Accepted,
+    #[serde(rename(serialize = "Compilation Success"))]
+    CompilationSuccess,
+    #[serde(rename(serialize = "Wrong Answer"))]
+    WrongAnswer,
+    #[serde(rename(serialize = "Runtime Error"))]
+    RuntimeError,
+    #[serde(rename(serialize = "Time Limit Exceeded"))]
+    TimeLimitExceeded,
+    #[serde(rename(serialize = "Memory Limit Exceeded"))]
+    MemoryLimitExceeded,
+    #[serde(rename(serialize = "System Error"))]
+    SystemError,
+    #[serde(rename(serialize = "SPJ Error"))]
+    SpjError,
+    Skipped
+}
