@@ -3,7 +3,7 @@ use env_logger;
 use log;
 
 
-use oj::post;
+use oj::postapi;
 
 #[get("/hello/{name}")]
 async fn greet(name: web::Path<String>) -> impl Responder {
@@ -31,7 +31,7 @@ async fn main() -> std::io::Result<()> {
             .service(greet)
             // DO NOT REMOVE: used in automatic testing
             .service(exit)
-            .service(post::post_jobs)
+            .service(postapi::post_jobs)
     })
     .bind(("127.0.0.1", 12345))?
     .run()
