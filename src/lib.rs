@@ -3,7 +3,7 @@ pub mod postapi;
 pub mod config;
 pub mod job;
 
-use std::sync::{Mutex, Arc};
+use std::{sync::{Mutex, Arc}, clone};
 use job::JobInfo;
 use lazy_static::lazy_static;
 use serde::Serialize;
@@ -43,10 +43,23 @@ pub struct User {
 #[derive(Debug, Serialize)]
 pub struct CaseResult {
     id: u32,
-    result: Result,
+    result: RunResult,
     time: u32,
     memory: u32,
     info: String
+}
+
+impl CaseResult {
+    pub fn new(id: u32) -> Self {
+        Self {
+            id,
+            result: RunResult::Waiting,
+            time: 0,
+            memory: 0,
+            info: String::new()
+        }
+    }
+
 }
 
 #[derive(Debug, Serialize)]
@@ -56,12 +69,13 @@ pub struct Response {
     updated_time: String,
     submission: JobInfo,
     state: State,
-    result: Result,
+    result: RunResult,
     score: f32,
     cases: Vec<CaseResult>
 }
 
-#[derive(Debug, Serialize)]
+
+#[derive(Debug, Serialize, Clone, Copy)]
 pub enum State {
     Queueing,
     Running,
@@ -69,11 +83,13 @@ pub enum State {
     Canceled
 }
 
-#[derive(Debug, Serialize, PartialEq)]
-pub enum Result {
+#[derive(Debug, Serialize, PartialEq, Clone, Copy)]
+pub enum RunResult {
     Waiting,
     Running,
     Accepted,
+    #[serde(rename(serialize = "Compilation Error"))]
+    CompilationError,
     #[serde(rename(serialize = "Compilation Success"))]
     CompilationSuccess,
     #[serde(rename(serialize = "Wrong Answer"))]
