@@ -1,12 +1,12 @@
 
-pub mod postapi;
+pub mod jobapi;
 pub mod config;
 pub mod job;
 
 use std::sync::{Mutex, Arc};
 use job::JobInfo;
 use lazy_static::lazy_static;
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 
 
 lazy_static!(
@@ -90,7 +90,7 @@ pub struct Response {
 }
 
 
-#[derive(Debug, Serialize, Clone, Copy)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone, Copy)]
 pub enum State {
     Queueing,
     Running,
@@ -98,7 +98,7 @@ pub enum State {
     Canceled
 }
 
-#[derive(Debug, Serialize, PartialEq, Clone, Copy)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Copy)]
 pub enum RunResult {
     Waiting,
     Running,

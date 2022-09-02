@@ -14,6 +14,7 @@ data = {
 }
 
 r = requests.post(url=url, json=data)
+r = requests.get(url=url)
 json_obj = json.loads(r.content)
 print(json.dumps(json_obj, indent=2))
 

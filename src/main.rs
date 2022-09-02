@@ -7,7 +7,7 @@ use log;
 use serde_json;
 
 
-use oj::postapi;
+use oj::jobapi;
 use oj::config::Config;
 
 #[get("/hello/{name}")]
@@ -39,7 +39,8 @@ async fn main() -> std::io::Result<()> {
             .service(greet)
             // DO NOT REMOVE: used in automatic testing
             .service(exit)
-            .service(postapi::post_jobs)
+            .service(jobapi::post_jobs)
+            .service(jobapi::get_jobs)
     })
     .bind(("127.0.0.1", 12345))?
     .run()

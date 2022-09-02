@@ -21,32 +21,34 @@ const DIRPREFIX: &str = "./tmp";
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct JobInfo {
-    source_code: String,
-    language: String,
-    user_id: u32,
-    contest_id: u32,
-    problem_id: u32
+    pub source_code: String,
+    pub language: String,
+    pub user_id: u32,
+    pub contest_id: u32,
+    pub problem_id: u32
 }
 
 pub struct Job {
-    job_id: u32,
-    info: JobInfo,
-    score: f32,
-    created_time: String,
-    updated_time: String,
-    state: State,
-    result: RunResult,
-    case_res: Vec<CaseResult>
+    pub user_name: String,
+    pub job_id: u32,
+    pub info: JobInfo,
+    pub score: f32,
+    pub created_time: DateTime<Utc>,
+    pub updated_time: DateTime<Utc>,
+    pub state: State,
+    pub result: RunResult,
+    pub case_res: Vec<CaseResult>
 }
 
 impl Job {
-    pub fn new(job_id: u32, info: JobInfo) -> Self {
+    pub fn new(user_name: &str, job_id: u32, info: JobInfo) -> Self {
         Self {
+            user_name: user_name.to_string(),
             job_id,
             info,
             score: 0.0,
-            created_time: "".to_string(),
-            updated_time: "".to_string(),
+            created_time: DateTime::default(),
+            updated_time: DateTime::default(),
             state: State::Queueing,
             result: RunResult::Waiting,
             case_res: Vec::new()
@@ -96,13 +98,11 @@ impl Job {
         { return false;}
         return true;
     }
-    fn response(&mut self) -> Response {
-        let dt = Utc::now();
-        self.updated_time = dt.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string();
+    pub fn response(&self) -> Response {
         Response {
             id: self.job_id,
-            created_time: self.created_time.clone(),
-            updated_time: self.updated_time.clone(),
+            created_time: self.created_time.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string(),
+            updated_time: self.updated_time.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string(),
             submission: self.info.clone(),
             state: self.state,
             result: self.result,
@@ -126,9 +126,8 @@ impl Job {
         }
 
         assert!(self.is_valid(config));
-        let dt = Utc::now();
-        self.created_time = dt.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string();
-        self.updated_time = dt.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string();
+        self.created_time = Utc::now();
+        self.updated_time = Utc::now();
         self.score = 0.0;
         self.state = State::Queueing;
         self.result = RunResult::Waiting;
@@ -231,7 +230,7 @@ mod test {
             contest_id: 0,
             problem_id: 0
         };
-        let mut job = Job::new(0, info);
+        let mut job = Job::new("root", 0, info);
         job.init(&config);
         job.compile_source_code(&config, 0);
         let output = Command::new("./tmp/job_0/a.out")
@@ -253,7 +252,7 @@ mod test {
             contest_id: 0,
             problem_id: 0
         };
-        let mut job = Job::new(0, info);
+        let mut job = Job::new("root", 0, info);
         job.init(&config);
         let res = job.compile_source_code(&config, 0);
         assert!(res);
@@ -279,7 +278,7 @@ mod test {
             contest_id: 0,
             problem_id: 0
         };
-        let mut job = Job::new(0, info);
+        let mut job = Job::new("root", 0, info);
         // job.init();
         assert_eq!(job.score, 0.0);
         job.run(&config);
@@ -297,8 +296,8 @@ mod test {
             contest_id: 0,
             problem_id: 0
         };
-        let mut job = Job::new(0, info);
         // job.init();
+        let mut job = Job::new("root", 0, info);
         assert_eq!(job.score, 0.0);
         let resp = job.run(&config);
         let out = serde_json::to_string_pretty(&resp).unwrap();
