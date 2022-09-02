@@ -1,7 +1,7 @@
 use std::fs::{write, File, self, OpenOptions};
 use std::path::Path;
 use std::process::{Command, Stdio};
-use std::io;
+use std::{io, usize};
 
 use serde::Deserialize;
 use serde::Serialize;
@@ -36,6 +36,7 @@ pub struct Job {
     updated_time: String,
     state: State,
     result: RunResult,
+    case_res: Vec<CaseResult>
 }
 
 impl Job {
@@ -48,46 +49,41 @@ impl Job {
             updated_time: "".to_string(),
             state: State::Queueing,
             result: RunResult::Waiting,
+            case_res: Vec::new()
         }
     }
     pub fn run(&mut self, config: &config::Config) -> Response {
 
-        if !self.is_valid(config) {
-            log::info!(target: "Job::run", "Job invalid");
-        }
-        let mut cases: Vec<CaseResult> = Vec::new();
         let problem = config.problems.iter().find(
             |item| { item.id==self.info.problem_id }
             ).unwrap();
-        cases.push(CaseResult::new(0));
-        problem.cases.iter().enumerate().for_each( |(mut i,_)| {
-            i += 1;
-            cases.push(CaseResult::new(i as u32));
-        });
 
-        self.init();
+        if !self.init(config) {
+            self.state = State::Finished;
+            self.result = RunResult::SystemError;
+            return self.response();
+        }
         self.result = RunResult::Running;
         self.state = State::Running;
 
-        let res = self.compile_source_code(config);
-        cases[0].result = res;
-        if res != RunResult::CompilationSuccess {
+        if !self.compile_source_code(config, 0) {
+            self.state = State::Finished;
             self.result = RunResult::CompilationError;
-            return self.response(cases);
+            return self.response();
         }
         self.result = RunResult::CompilationSuccess;
 
         for (i, case) in problem.cases.iter().enumerate() {
-            let res = self.run_one_case(case);
-            cases[i+1].result = res;
-            self.result = res;
-            if res != RunResult::Accepted {
-                return self.response(cases);
+            if !self.run_one_case(case, i+1) {
+                self.state = State::Finished;
+                self.result = self.case_res[i+1].result;
+                return self.response();
             }
             self.score += case.score;
         }
-        self.clear();
-        return self.response(cases);
+        self.state = State::Finished;
+        self.result = RunResult::Accepted;
+        return self.response();
     }
     pub fn is_valid(&self, config: &config::Config) -> bool {
         if config.languages.iter().find(
@@ -98,7 +94,7 @@ impl Job {
         { return false;}
         return true;
     }
-    fn response(&mut self, cases: Vec<CaseResult>) -> Response {
+    fn response(&mut self) -> Response {
         let dt = Utc::now();
         self.updated_time = dt.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string();
         Response {
@@ -106,35 +102,52 @@ impl Job {
             created_time: self.created_time.clone(),
             updated_time: self.updated_time.clone(),
             submission: self.info.clone(),
-            state: State::Finished,
+            state: self.state,
             result: self.result,
             score: self.score,
-            cases,
+            cases: self.case_res.clone()
         }
     }
-    fn init(&mut self) -> io::Result<()>{
-        self.clear();
-        let path = format!("{}/job_{}", DIRPREFIX, self.job_id);
-        if !Path::new(&path).is_dir() {
-            fs::create_dir(&path)?;
+    fn init(&mut self, config: &config::Config) -> bool {
+        let try_do = || -> io::Result<()> {
+            self.clear();
+            let path = format!("{}/job_{}", DIRPREFIX, self.job_id);
+            if !Path::new(&path).is_dir() {
+                fs::create_dir(&path)?;
+            }
+            Ok(())
+        };
+        if let Err(e) = try_do() {
+            log::info!(target: "Job::init", "System io error {}", e);
+            self.result = RunResult::SystemError;
+            return false;
         }
+
+        assert!(self.is_valid(config));
         let dt = Utc::now();
         self.created_time = dt.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string();
         self.updated_time = dt.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string();
         self.score = 0.0;
         self.state = State::Queueing;
         self.result = RunResult::Waiting;
-        Ok(())
+        self.case_res.clear();
+        let problem = config.problems.iter().find(
+            |item| { item.id==self.info.problem_id }
+            ).unwrap();
+        for i in 0..=problem.cases.len() {
+            self.case_res.push(CaseResult::new(i as u32));
+        }
+        return true;
     }
-    fn clear(&self) -> io::Result<()> {
+    fn clear(&self) {
         let path = format!("{}/job_{}", DIRPREFIX, self.job_id);
         if Path::new(&path).is_dir() {
-            fs::remove_dir_all(&path)?;
+            fs::remove_dir_all(&path).expect("Clear failed");
         }
-        Ok(())
     }
-    fn run_one_case(&self, case: &config::Case) -> RunResult {
-        let try_do = || -> io::Result<RunResult> {
+    fn run_one_case(&mut self, case: &config::Case, caseidx: usize) -> bool {
+        let mut ret = false;
+        let mut try_do = || -> io::Result<RunResult> {
             let input = File::open(&case.input_file)?;
             let output = OpenOptions::new().read(true).write(true).truncate(true).create(true)
                 .open(self.path("output"))?;
@@ -145,6 +158,7 @@ impl Job {
             match res {
                 Some(exit) => {
                     if exit.success() {
+                        ret = true;
                         let ans = fs::read_to_string(&case.answer_file)?;
                         let out = fs::read_to_string(self.path("output"))?;
                         if ans==out { return Ok(RunResult::Accepted);}
@@ -162,14 +176,17 @@ impl Job {
             log::info!(target: "Job::run_one_case", "System io error {}", err);
             RunResult::SystemError
         });
-        return res;
+
+        self.case_res[caseidx].result = res;
+        return ret;
     }
     fn path(&self, filename: &str) -> String {
         format!("{}/job_{}/{}", DIRPREFIX, &self.job_id, filename)
     }
-    fn compile_source_code(&self, config: &config::Config) -> RunResult {
+    fn compile_source_code(&mut self, config: &config::Config, caseidx: usize) -> bool {
 
-        let try_do = || -> io::Result<RunResult> {
+        let mut ret = false;
+        let mut try_do = || -> io::Result<RunResult> {
             let mut language = config.languages.iter().find(
                 |item| {item.name==self.info.language}
                 ).unwrap().clone();
@@ -183,13 +200,15 @@ impl Job {
                 .spawn()?;
             let exitstatus = process.wait()?;
             if !exitstatus.success() { return Ok(RunResult::CompilationError);}
+            ret = true;
             return Ok(RunResult::CompilationSuccess);
         };
         let res = try_do().unwrap_or_else(|err| {
             log::info!(target: "Job::compile_source_code", "System io error {}", err);
             RunResult::SystemError
         });
-        return res;
+        self.case_res[caseidx].result = res;
+        return ret;
     }
 }
 
@@ -211,8 +230,8 @@ mod test {
             problem_id: 0
         };
         let mut job = Job::new(0, info);
-        job.init();
-        job.compile_source_code(&config);
+        job.init(&config);
+        job.compile_source_code(&config, 0);
         let output = Command::new("./tmp/job_0/a.out")
             .output().unwrap();
 
@@ -233,17 +252,17 @@ mod test {
             problem_id: 0
         };
         let mut job = Job::new(0, info);
-        job.init();
-        let res = job.compile_source_code(&config);
-        assert_eq!(res, RunResult::CompilationSuccess);
+        job.init(&config);
+        let res = job.compile_source_code(&config, 0);
+        assert!(res);
         let problem = &config.problems[0];
         let case1 = &problem.cases[0];
         let case2 = &problem.cases[1];
 
-        let res = job.run_one_case(case1);
-        assert_eq!(res, RunResult::Accepted);
-        let res = job.run_one_case(case2);
-        assert_eq!(res, RunResult::Accepted);
+        let res = job.run_one_case(case1, 1);
+        assert!(res);
+        let res = job.run_one_case(case2, 2);
+        assert!(res);
 
         job.clear();
     }
@@ -263,6 +282,27 @@ mod test {
         assert_eq!(job.score, 0.0);
         job.run(&config);
         assert_eq!(job.score, 100.0);
+        job.clear();
+    }
+    #[test]
+    fn test_response() {
+        let json = fs::read_to_string("./config.json").unwrap();
+        let config: Config = serde_json::from_str(&json).expect("Parse failed");
+        let info = JobInfo {
+            source_code: "fn main() {let mut line1 = String::new();std::io::stdin().read_line(&mut line1).unwrap();let a: i32 = line1.trim().parse().unwrap();let mut line2 = String::new();std::io::stdin().read_line(&mut line2).unwrap();let b: i32 = line2.trim().parse().unwrap();println!(\"{}\", a + b);}".to_string(),
+            language: "Rust".to_string(),
+            user_id: 0,
+            contest_id: 0,
+            problem_id: 0
+        };
+        let mut job = Job::new(0, info);
+        // job.init();
+        assert_eq!(job.score, 0.0);
+        let resp = job.run(&config);
+        let out = serde_json::to_string_pretty(&resp).unwrap();
+        println!("{}", out);
+        assert_eq!(job.score, 100.0);
+
         job.clear();
     }
 }

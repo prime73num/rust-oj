@@ -3,7 +3,7 @@ pub mod postapi;
 pub mod config;
 pub mod job;
 
-use std::{sync::{Mutex, Arc}, clone};
+use std::sync::{Mutex, Arc};
 use job::JobInfo;
 use lazy_static::lazy_static;
 use serde::Serialize;
@@ -40,7 +40,7 @@ pub struct User {
     name: String
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct CaseResult {
     id: u32,
     result: RunResult,
