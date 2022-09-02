@@ -79,7 +79,9 @@ impl Job {
                 self.result = self.case_res[i+1].result;
                 return self.response();
             }
-            self.score += case.score;
+            if self.case_res[i+1].result==RunResult::Accepted {
+                self.score += case.score;
+            }
         }
         self.state = State::Finished;
         self.result = RunResult::Accepted;

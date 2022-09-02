@@ -10,13 +10,13 @@ use serde::Serialize;
 
 
 lazy_static!(
-    static ref JOBDATA: Arc<JobData> = Arc::default();
+    pub static ref JOBDATA: Arc<Mutex<JobData>> = Arc::default();
 );
 
 pub struct JobData {
-    job_list: Mutex<Vec<job::Job>>,
-    total_jobs: Mutex<u32>,
-    user_list: Mutex<Vec<User>>
+    job_list: Vec<job::Job>,
+    total_jobs: u32,
+    user_list: Vec<User>
 }
 
 impl Default for JobData{
@@ -28,9 +28,9 @@ impl Default for JobData{
             name: "root".to_string()
         }];
         Self {
-            job_list: Mutex::new(job_list),
-            total_jobs: Mutex::new(total_jobs),
-            user_list: Mutex::new(user_list)
+            job_list, 
+            total_jobs,
+            user_list
         }
     }
 }
@@ -57,6 +57,21 @@ impl CaseResult {
             time: 0,
             memory: 0,
             info: String::new()
+        }
+    }
+
+}
+#[derive(Debug, Serialize)]
+pub struct ErrorResponse {
+    code: u32,
+    reason: String
+}
+
+impl ErrorResponse {
+    pub fn new(code: u32, reason: &str) -> Self {
+        Self {
+            code,
+            reason: reason.to_string()
         }
     }
 

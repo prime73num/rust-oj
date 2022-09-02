@@ -1,4 +1,5 @@
 import requests
+import json
 
 
 
@@ -13,5 +14,6 @@ data = {
 }
 
 r = requests.post(url=url, json=data)
-print(r.text)
+json_obj = json.loads(r.content)
+print(json.dumps(json_obj, indent=2))
 
