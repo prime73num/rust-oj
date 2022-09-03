@@ -1,13 +1,18 @@
 
-pub mod jobapi;
 pub mod config;
 pub mod job;
-pub mod userapi;
+
+pub mod job_api;
+pub mod user_api;
+pub mod contest_api;
 
 use std::sync::{Mutex, Arc};
-use job::{JobInfo, Job};
 use lazy_static::lazy_static;
 use serde::{Serialize, Deserialize};
+
+use user_api::UserInfo;
+use job::{JobInfo, Job};
+use contest_api::{ContestInfo, HttpcomInfo};
 
 
 lazy_static!(
@@ -19,6 +24,8 @@ pub struct JobData {
     total_jobs: u32,
     user_list: Vec<User>,
     total_users: u32,
+    contests_list: Vec<ContestInfo>,
+    total_contests: u32,
 }
 
 impl JobData {
@@ -39,28 +46,62 @@ impl JobData {
         self.job_list.push(job);
         Some(res)
     }
-    pub fn add_user(&mut self, name: &str) -> UserRes {
+    pub fn post_user(&mut self, mut info: UserInfo) -> UserRes {
+        if let Some(id) = info.id {
+            let res = self.user_list.iter().find(|x| {
+                x.id == id
+            });
+            if res.is_none() { return UserRes::IdNotFound; }
+        }
         if self.user_list.iter().find(|x| {
-            x.name == name
+            x.name == info.name
         }).is_some() { return UserRes::NameExit;}
-        let temp = User::new(self.total_users, name);
-        self.user_list.push(temp.clone());
-        self.total_users += 1;
-        UserRes::Succecc(temp)
+        match info.id {
+            Some(id) => {
+                let user = self.user_list.iter_mut().find(|x| {
+                    x.id == id
+                }).unwrap();
+                *user = User::from(info);
+                UserRes::Succecc(user.clone())
+            },
+            None => {
+                info.id = Some(self.total_users);
+                let temp = User::from(info);
+                self.user_list.push(temp.clone());
+                self.total_users += 1;
+                UserRes::Succecc(temp)
+            },
+        }
     }
-    pub fn update_user(&mut self, id: u32, name: &str) -> UserRes {
-        let has_name = self.user_list.iter().find(|x| {
-            x.name == name
-        }).is_some();
-        let res = self.user_list.iter_mut().find(|x| {
-            x.id == id
+    pub fn post_contest(&mut self, mut info: HttpcomInfo, config: &config::Config) -> Option<ContestInfo> {
+        if let Some(id) = info.id {
+            if self.contests_list.iter().find(|x| x.id==id).is_none() {
+                return None;
+            }
+        }
+        let res = info.user_ids.iter().all(|x| {
+            self.user_list.iter().find(|user| {user.id==*x}).is_some()
         });
-        if res.is_none() { return UserRes::IdNotFound; }
-        if has_name { return UserRes::NameExit; }
+        if !res { return None; }
+        let res = info.problem_ids.iter().all(|x| {
+            config.problems.iter().find(|problem| {problem.id==*x}).is_some()
+        });
+        if !res { return None; }
 
-        let user = res.unwrap();
-        user.name = name.to_string();
-        UserRes::Succecc(user.clone())
+        match info.id {
+            Some(id) => {
+                let contest = ContestInfo::from(info);
+                let pos = self.contests_list.iter_mut().find(|x| x.id==id).unwrap();
+                *pos = contest.clone();
+                return Some(contest);
+            },
+            None => {
+                info.id = Some(self.total_contests);
+                let contest = ContestInfo::from(info);
+                self.contests_list.push(contest.clone());
+                return Some(contest);
+            },
+        }
     }
 }
 
@@ -76,7 +117,9 @@ impl Default for JobData{
             job_list, 
             total_jobs,
             user_list,
-            total_users: 1
+            total_users: 1,
+            contests_list: Vec::new(),
+            total_contests: 0
         }
     }
 }
@@ -94,10 +137,10 @@ pub enum UserRes {
 }
 
 impl User {
-    pub fn new(id: u32, name: &str) -> Self {
+    pub fn from(info: UserInfo) -> Self {
         Self {
-            id,
-            name: name.to_string()
+            id: info.id.unwrap(),
+            name: info.name
         }
     }
 }

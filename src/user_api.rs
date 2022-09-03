@@ -12,8 +12,8 @@ use crate::{JOBDATA, UserRes, ErrorResponse, User};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UserInfo {
-    id: Option<u32>,
-    name: String
+    pub id: Option<u32>,
+    pub name: String
 }
 
 #[post("/users")]
@@ -21,12 +21,7 @@ pub async fn post_users(info: web::Json<UserInfo>) -> impl Responder {
     let job_data = JOBDATA.clone();
     let mut job_data_inner = job_data.lock().unwrap();
 
-    let res: UserRes;
-    if info.id.is_none() {
-        res = job_data_inner.add_user(&info.name);
-    } else {
-        res = job_data_inner.update_user(info.id.unwrap(), &info.name);
-    }
+    let res = job_data_inner.post_user(info.into_inner());
 
     log::info!("post users result {:?}", &res);
     match res {

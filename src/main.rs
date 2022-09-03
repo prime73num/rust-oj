@@ -8,8 +8,8 @@ use serde_json;
 use clap::{Command, arg};
 
 
-use oj::jobapi;
-use oj::userapi;
+use oj::job_api;
+use oj::user_api;
 use oj::config::Config;
 
 #[get("/hello/{name}")]
@@ -52,13 +52,13 @@ async fn main() -> std::io::Result<()> {
             .service(greet)
             // DO NOT REMOVE: used in automatic testing
             .service(exit)
-            .service(jobapi::post_jobs)
-            .service(jobapi::get_jobs)
-            .service(jobapi::get_jobs_id)
-            .service(jobapi::put_job)
-            .service(jobapi::delete_job)
-            .service(userapi::post_users)
-            .service(userapi::get_users)
+            .service(job_api::post_jobs)
+            .service(job_api::get_jobs)
+            .service(job_api::get_jobs_id)
+            .service(job_api::put_job)
+            .service(job_api::delete_job)
+            .service(user_api::post_users)
+            .service(user_api::get_users)
     })
     .bind(("127.0.0.1", 12345))?
     .run()
