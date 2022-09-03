@@ -33,7 +33,9 @@ pub async fn post_jobs(info: web::Json<JobInfo>, config: web::Data<Config>) -> i
             .json(ErrorResponse::new(1, "ERR_INVALID_ARGUMENT"));
     }
     job_data_inner.job_list.push(job);
+    job_data_inner.total_jobs += 1;
     let res = job_data_inner.job_list.last_mut().unwrap().run(&config);
+    println!("{}", serde_json::to_string_pretty(&res).unwrap());
     log::info!(target: "post_jobs_handler", "job run success");
     return HttpResponse::Ok().json(res);
 }

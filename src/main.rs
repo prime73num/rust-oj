@@ -5,6 +5,7 @@ use env_logger;
 use log;
 
 use serde_json;
+use clap::{Command, arg};
 
 
 use oj::jobapi;
@@ -28,7 +29,18 @@ async fn exit() -> impl Responder {
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
-    let json = fs::read_to_string("./config.json").unwrap();
+
+    let cmd = Command::new("cmd")
+        .args(&[
+            arg!(-c --config <CONFIG> "Specify a config file").required(false),
+            arg!(-f --"flush-data" "Fluash data").required(false)
+        ]);
+    let args = cmd.get_matches();
+    let mut file_path = "./config.json";
+    if args.contains_id("config") {
+        file_path = args.get_one::<String>("config").unwrap();
+    }
+    let json = fs::read_to_string(file_path).unwrap();
     let config: Config = serde_json::from_str(&json).expect("Parse failed");
 
     HttpServer::new( move || {
@@ -41,6 +53,9 @@ async fn main() -> std::io::Result<()> {
             .service(exit)
             .service(jobapi::post_jobs)
             .service(jobapi::get_jobs)
+            .service(jobapi::get_jobs_id)
+            .service(jobapi::put_job)
+            .service(jobapi::delete_job)
     })
     .bind(("127.0.0.1", 12345))?
     .run()

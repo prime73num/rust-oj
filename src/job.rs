@@ -75,6 +75,7 @@ impl Job {
         }
         self.result = RunResult::CompilationSuccess;
 
+        let mut ans = true;
         for (i, case) in problem.cases.iter().enumerate() {
             if !self.run_one_case(case, i+1) {
                 self.state = State::Finished;
@@ -83,10 +84,16 @@ impl Job {
             }
             if self.case_res[i+1].result==RunResult::Accepted {
                 self.score += case.score;
+            } else {
+                ans = false;
             }
         }
         self.state = State::Finished;
-        self.result = RunResult::Accepted;
+        if ans {
+            self.result = RunResult::Accepted;
+        } else {
+            self.result = RunResult::WrongAnswer;
+        }
         return self.response();
     }
     pub fn is_valid(&self, config: &config::Config) -> bool {

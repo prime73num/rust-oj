@@ -1,0 +1,93 @@
+{
+  "id": 0,
+  "created_time": "2022-09-03T04:02:04.841Z",
+  "updated_time": "2022-09-03T04:02:04.841Z",
+  "submission": {
+    "source_code": "fn main() { println!(\"Hello World.\"); }",
+    "language": "Rust",
+    "user_id": 0,
+    "contest_id": 0,
+    "problem_id": 0
+  },
+  "state": "Finished",
+  "result": "Wrong Answer",
+  "score": 0.0,
+  "cases": [
+    {
+      "id": 0,
+      "result": "Compilation Success",
+      "time": 0,
+      "memory": 0,
+      "info": ""
+    },
+    {
+      "id": 1,
+      "result": "Wrong Answer",
+      "time": 0,
+      "memory": 0,
+      "info": ""
+    }
+  ]
+}
+{
+  "id": 0,
+  "created_time": "2022-09-03T04:02:05.150Z",
+  "updated_time": "2022-09-03T04:02:05.150Z",
+  "submission": {
+    "source_code": "fn main() { panic!(\"Hello World!\"); }",
+    "language": "Rust",
+    "user_id": 0,
+    "contest_id": 0,
+    "problem_id": 0
+  },
+  "state": "Finished",
+  "result": "Runtime Error",
+  "score": 0.0,
+  "cases": [
+    {
+      "id": 0,
+      "result": "Compilation Success",
+      "time": 0,
+      "memory": 0,
+      "info": ""
+    },
+    {
+      "id": 1,
+      "result": "Runtime Error",
+      "time": 0,
+      "memory": 0,
+      "info": ""
+    }
+  ]
+}
+{
+  "id": 0,
+  "created_time": "2022-09-03T04:02:05.486Z",
+  "updated_time": "2022-09-03T04:02:05.486Z",
+  "submission": {
+    "source_code": "fn main() { println!(\"Hello World!{}\"); }",
+    "language": "Rust",
+    "user_id": 0,
+    "contest_id": 0,
+    "problem_id": 0
+  },
+  "state": "Finished",
+  "result": "Compilation Error",
+  "score": 0.0,
+  "cases": [
+    {
+      "id": 0,
+      "result": "Compilation Error",
+      "time": 0,
+      "memory": 0,
+      "info": ""
+    },
+    {
+      "id": 1,
+      "result": "Waiting",
+      "time": 0,
+      "memory": 0,
+      "info": ""
+    }
+  ]
+}
