@@ -1,7 +1,7 @@
 
 
 use actix_web::{
-    get, post, web, 
+    delete, put, get, post, web, 
     Responder, 
     HttpResponse, HttpResponseBuilder,
     http::StatusCode
@@ -79,9 +79,6 @@ impl UrlQuery {
         if !self.state.map_or(true, |x| {
             job.state==x
         }) { return false;}
-        if !self.state.map_or(true, |x| {
-            job.state==x
-        }) { return false;}
         if !self.result.map_or(true, |x| {
             job.result==x
         }) { return false;}
@@ -105,3 +102,67 @@ pub async fn get_jobs(query: web::Query<UrlQuery>) -> impl Responder {
     drop(job_data_inner);
     return HttpResponse::Ok().json(res);
 }
+
+#[get("/jobs/{jobid}")]
+pub async fn get_jobs_id(jobid: web::Path<u32>) -> impl Responder {
+    let job_data = JOBDATA.clone();
+    let job_data_inner = job_data.lock().unwrap();
+    let response = job_data_inner.job_list.iter().find(|x| {
+        x.job_id==*jobid
+    }).map(|x| {
+        x.response()
+    });
+    if response.is_none() {
+        return HttpResponseBuilder::new(StatusCode::NOT_FOUND)
+            .reason( "Job 123456 not found." )
+            .json(ErrorResponse::new(3, "ERR_NOT_FOUND"));
+    }
+    return HttpResponse::Ok().json(response.unwrap());
+}
+#[put("/jobs/{jobid}")]
+pub async fn put_job(jobid: web::Path<u32>, config: web::Data<Config>) -> impl Responder {
+    let job_data = JOBDATA.clone();
+    let mut job_data_inner = job_data.lock().unwrap();
+    let job = job_data_inner.job_list.iter_mut().find(|x| {
+        x.job_id==*jobid
+    });
+    if job.is_none() {
+        return HttpResponseBuilder::new(StatusCode::NOT_FOUND)
+            .reason( "Job 123456 not found." )
+            .json(ErrorResponse::new(3, "ERR_NOT_FOUND"));
+    }
+    let job = job.unwrap();
+    if job.state != State::Finished {
+        return HttpResponseBuilder::new(StatusCode::BAD_REQUEST)
+            .reason( "Job 123456 not finished." )
+            .json(ErrorResponse::new(2, "ERR_INVALID_STATE"));
+    }
+    job.run(&config);
+
+    return HttpResponse::Ok().json(job.response());
+}
+
+#[delete("/jobs/{jobid}")]
+pub async fn delete_job(jobid: web::Path<u32>, config: web::Data<Config>) -> impl Responder {
+    let job_data = JOBDATA.clone();
+    let mut job_data_inner = job_data.lock().unwrap();
+    let job = job_data_inner.job_list.iter_mut().find(|x| {
+        x.job_id==*jobid
+    });
+    if job.is_none() {
+        return HttpResponseBuilder::new(StatusCode::NOT_FOUND)
+            .reason( "Job 123456 not found." )
+            .json(ErrorResponse::new(3, "ERR_NOT_FOUND"));
+    }
+    let job = job.unwrap();
+    if job.state != State::Queueing {
+        return HttpResponseBuilder::new(StatusCode::BAD_REQUEST)
+            .reason( "Job 123456 not queuing." )
+            .json(ErrorResponse::new(2, "ERR_INVALID_STATE"));
+    }
+    job.run(&config);
+    job.state = State::Canceled;
+
+    return HttpResponse::Ok().finish();
+}
+
