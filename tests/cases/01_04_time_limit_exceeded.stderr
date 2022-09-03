@@ -1,6 +1,0 @@
-[2022-09-03T07:22:30Z INFO  actix_server::builder] Starting 2 workers
-[2022-09-03T07:22:30Z INFO  actix_server::server] Actix runtime found; starting in Actix runtime
-[2022-09-03T07:22:31Z INFO  actix_web::middleware::logger] 127.0.0.1 "GET / HTTP/1.1" 404 0 "-" "-" 0.000284
-[2022-09-03T07:22:31Z INFO  post_jobs_handler] Post jobs
-[2022-09-03T07:22:33Z INFO  post_jobs_handler] job run success
-[2022-09-03T07:22:33Z INFO  actix_web::middleware::logger] 127.0.0.1 "POST /jobs HTTP/1.1" 200 445 "-" "-" 2.301606
