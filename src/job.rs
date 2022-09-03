@@ -41,11 +41,11 @@ pub struct Job {
 }
 
 impl Job {
-    pub fn new(user_name: &str, job_id: u32, info: JobInfo) -> Self {
+    pub fn new(user_name: &str, job_id: u32, info: &JobInfo) -> Self {
         Self {
             user_name: user_name.to_string(),
             job_id,
-            info,
+            info: info.clone(),
             score: 0.0,
             created_time: DateTime::default(),
             updated_time: DateTime::default(),
@@ -237,7 +237,7 @@ mod test {
             contest_id: 0,
             problem_id: 0
         };
-        let mut job = Job::new("root", 0, info);
+        let mut job = Job::new("root", 0, &info);
         job.init(&config);
         job.compile_source_code(&config, 0);
         let output = Command::new("./tmp/job_0/a.out")
@@ -259,7 +259,7 @@ mod test {
             contest_id: 0,
             problem_id: 0
         };
-        let mut job = Job::new("root", 0, info);
+        let mut job = Job::new("root", 0, &info);
         job.init(&config);
         let res = job.compile_source_code(&config, 0);
         assert!(res);
@@ -285,7 +285,7 @@ mod test {
             contest_id: 0,
             problem_id: 0
         };
-        let mut job = Job::new("root", 0, info);
+        let mut job = Job::new("root", 0, &info);
         // job.init();
         assert_eq!(job.score, 0.0);
         job.run(&config);
@@ -304,7 +304,7 @@ mod test {
             problem_id: 0
         };
         // job.init();
-        let mut job = Job::new("root", 0, info);
+        let mut job = Job::new("root", 0, &info);
         assert_eq!(job.score, 0.0);
         let resp = job.run(&config);
         let out = serde_json::to_string_pretty(&resp).unwrap();

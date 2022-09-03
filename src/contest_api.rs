@@ -2,12 +2,12 @@
 use actix_web::{
     get, post, web, 
     Responder, 
-    HttpResponse, HttpResponseBuilder,
-    http::StatusCode
+    HttpResponse,
 };
+use chrono::{DateTime, Utc};
 use serde::{Serialize, Deserialize};
 
-use crate::{JOBDATA, config, ErrorResponse, AppError};
+use crate::{JOBDATA, config, AppError, job::JobInfo};
 
 #[derive(Debug, Serialize, Clone)]
 pub struct ContestInfo {
@@ -21,6 +21,19 @@ pub struct ContestInfo {
 }
 
 impl ContestInfo {
+    pub fn is_valid(&self, jobinfo: &JobInfo) -> bool {
+        if !self.problem_ids.iter().any(|x| {
+            *x == jobinfo.problem_id
+        }) { return false;}
+        if !self.user_ids.iter().any(|x| {
+            *x == jobinfo.user_id
+        }) { return false;}
+        let from = DateTime::parse_from_str(&self.from, "%Y-%m-%dT%H:%M:%S%.3fZ").unwrap();
+        if from > Utc::now() { return false;}
+        let to = DateTime::parse_from_str(&self.to, "%Y-%m-%dT%H:%M:%S%.3fZ").unwrap();
+        if to < Utc::now() { return false;}
+        return true;
+    }
     pub fn from(info: HttpcomInfo) -> Self {
         Self {
             id: info.id.unwrap(),
@@ -65,23 +78,12 @@ pub async fn get_contests() -> impl Responder {
 }
 
 #[get("/contests/{contestid}")]
-pub async fn get_contest_id(id: web::Path<u32>) -> impl Responder {
+pub async fn get_contest_id(id: web::Path<u32>) -> Result<HttpResponse, AppError> {
     let job_data = JOBDATA.clone();
     let job_data_inner = job_data.lock().unwrap();
-    let res = job_data_inner.contests_list.iter().find(|x| {
-        x.0.id == *id
-    });
+    let res = job_data_inner.find_contest(*id)?;
 
-    match res {
-        Some(contest) => {
-            return HttpResponse::Ok().json(contest.clone());
-        },
-        None => {
-            return HttpResponseBuilder::new(StatusCode::NOT_FOUND)
-                .reason("Contest 114514 not found.")
-                .json(ErrorResponse::new(3, "ERR_NOT_FOUND"));
-        }
-    }
+    return Ok(HttpResponse::Ok().json(res.0.clone()));
 }
 
 #[get("/contests/{contestid}/ranklist")]

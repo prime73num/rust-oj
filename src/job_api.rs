@@ -22,7 +22,7 @@ pub async fn post_jobs(info: web::Json<JobInfo>, config: web::Data<Config>) -> R
     let job_data = JOBDATA.clone();
     let mut job_data_inner = job_data.lock().unwrap();
 
-    let res = job_data_inner.add_job(info, &config)?;
+    let res = job_data_inner.add_job(&info, &config)?;
 
     log::info!(target: "post_jobs_handler", "job run success");
     return Ok(HttpResponse::Ok().json(res));

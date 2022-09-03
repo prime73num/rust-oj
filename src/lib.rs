@@ -79,22 +79,70 @@ pub struct JobData {
 }
 
 impl JobData {
-    pub fn add_job(&mut self, info: JobInfo, config: &config::Config) -> Result<Response, AppError> {
+    pub fn add_job(&mut self, info: &JobInfo, config: &config::Config) -> Result<Response, AppError> {
         let id = self.total_jobs;
-        let res = self.user_list.iter().find(|x| x.id==info.user_id);
-        if res.is_none() {
-            return Err(AppError::ERR_NOT_FOUND);
-        }
-        let user_name = &res.unwrap().name;
+        let res = self.find_user(info.user_id)?;
+        let user_name = res.name.clone();
         let mut job = Job::new(&user_name, id, info);
         if !job.is_valid(config) {
             return Err(AppError::ERR_NOT_FOUND);
         }
+        let mut temp = 0;
+        let mut submission_time = &mut temp;
+        if info.contest_id != 0 {
+            let contest = self.find_contest_mut(info.contest_id)?;
+            if contest.0.is_valid(&info) { 
+                return Err(AppError::ERR_INVALID_ARGUMENT);
+            }
+            let entry = contest.1.entry((info.user_id, info.problem_id)).or_insert(0);
+            if *entry >= contest.0.submission_limit {
+                return Err(AppError::ERR_RATE_LIMIT);
+            }
+            submission_time = entry;
+        }
         job.run(config);
         let res = job.response();
+
+        *submission_time += 1;
         self.total_jobs += 1;
         self.job_list.push(job);
         Ok(res)
+    }
+    pub fn find_contest(&self, contest_id: u32) -> Result<&(ContestInfo, HashMap<(u32,u32), u32>), AppError> {
+        let response = self.contests_list.iter().find(|x| {
+            x.0.id==contest_id
+        });
+        return response.map_or(
+            Err(AppError::ERR_NOT_FOUND),
+            |x| { Ok(x) }
+            );
+    }
+    pub fn find_contest_mut(&mut self, contest_id: u32) -> Result<&mut (ContestInfo, HashMap<(u32,u32), u32>), AppError> {
+        let response = self.contests_list.iter_mut().find(|x| {
+            x.0.id==contest_id
+        });
+        return response.map_or(
+            Err(AppError::ERR_NOT_FOUND),
+            |x| { Ok(x) }
+            );
+    }
+    pub fn find_user_mut(&mut self, user_id: u32) -> Result<&mut User, AppError> {
+        let response = self.user_list.iter_mut().find(|x| {
+            x.id==user_id
+        });
+        return response.map_or(
+            Err(AppError::ERR_NOT_FOUND),
+            |x| { Ok(x) }
+            );
+    }
+    pub fn find_user(&self, user_id: u32) -> Result<&User, AppError> {
+        let response = self.user_list.iter().find(|x| {
+            x.id==user_id
+        });
+        return response.map_or(
+            Err(AppError::ERR_NOT_FOUND),
+            |x| { Ok(x) }
+            );
     }
     pub fn find_job_mut(&mut self, jobid: u32) -> Result<&mut Job, AppError> {
         let response = self.job_list.iter_mut().find(|x| {
@@ -123,19 +171,14 @@ impl JobData {
     }
     pub fn post_user(&mut self, mut info: UserInfo) -> Result<User, AppError> {
         if let Some(id) = info.id {
-            let res = self.user_list.iter().find(|x| {
-                x.id == id
-            });
-            if res.is_none() { return Err(AppError::ERR_NOT_FOUND); }
+            self.find_user(id)?;
         }
-        if self.user_list.iter().find(|x| {
+        if self.user_list.iter().any(|x| {
             x.name == info.name
-        }).is_some() { return Err(AppError::ERR_INVALID_ARGUMENT);}
+        }) { return Err(AppError::ERR_INVALID_ARGUMENT);}
         match info.id {
             Some(id) => {
-                let user = self.user_list.iter_mut().find(|x| {
-                    x.id == id
-                }).unwrap();
+                let user = self.find_user_mut(id)?;
                 *user = User::from(info);
                 Ok(user.clone())
             },
@@ -150,18 +193,16 @@ impl JobData {
     }
     pub fn post_contest(&mut self, mut info: HttpcomInfo, config: &config::Config) -> Result<ContestInfo, AppError> {
         if let Some(id) = info.id {
-            if self.contests_list.iter().find(|x| x.0.id==id).is_none() {
-                return Err(AppError::ERR_NOT_FOUND);
-            }
+            self.find_contest(id)?;
         }
         let res = info.user_ids.iter().all(|x| {
-            self.user_list.iter().find(|user| {user.id==*x}).is_some()
+            self.user_list.iter().any(|user| {user.id==*x})
         });
         if !res {
             return Err(AppError::ERR_NOT_FOUND);
         }
         let res = info.problem_ids.iter().all(|x| {
-            config.problems.iter().find(|problem| {problem.id==*x}).is_some()
+            config.problems.iter().any(|problem| {problem.id==*x})
         });
         if !res {
             return Err(AppError::ERR_NOT_FOUND);
@@ -170,7 +211,7 @@ impl JobData {
         match info.id {
             Some(id) => {
                 let contest = ContestInfo::from(info);
-                let pos = self.contests_list.iter_mut().find(|x| x.0.id==id).unwrap();
+                let pos = self.find_contest_mut(id)?;
                 pos.0 = contest.clone();
                 return Ok(contest);
             },
