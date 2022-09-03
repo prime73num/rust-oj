@@ -2,5 +2,5 @@
 *.stdout
 *.stderr
 *.http
-tmp/
-/request.py
+/tmp
+request.py

@@ -1,22 +1,22 @@
-[2022-09-03T04:02:03Z INFO  actix_server::builder] Starting 2 workers
-[2022-09-03T04:02:03Z INFO  actix_server::server] Actix runtime found; starting in Actix runtime
-[2022-09-03T04:02:04Z INFO  actix_web::middleware::logger] 127.0.0.1 "GET / HTTP/1.1" 404 0 "-" "-" 0.000280
-[2022-09-03T04:02:04Z INFO  post_jobs_handler] Post jobs
-[2022-09-03T04:02:05Z INFO  post_jobs_handler] job run success
-[2022-09-03T04:02:05Z INFO  actix_web::middleware::logger] 127.0.0.1 "POST /jobs HTTP/1.1" 200 423 "-" "-" 0.306594
-[2022-09-03T04:02:05Z INFO  post_jobs_handler] Post jobs
-thread 'main' panicked at 'Hello World!', ./tmp/job_0/main.rs:1:13
+[2022-09-03T05:07:54Z INFO  actix_server::builder] Starting 2 workers
+[2022-09-03T05:07:54Z INFO  actix_server::server] Actix runtime found; starting in Actix runtime
+[2022-09-03T05:07:55Z INFO  actix_web::middleware::logger] 127.0.0.1 "GET / HTTP/1.1" 404 0 "-" "-" 0.000316
+[2022-09-03T05:07:55Z INFO  post_jobs_handler] Post jobs
+[2022-09-03T05:07:55Z INFO  post_jobs_handler] job run success
+[2022-09-03T05:07:55Z INFO  actix_web::middleware::logger] 127.0.0.1 "POST /jobs HTTP/1.1" 200 423 "-" "-" 0.302700
+[2022-09-03T05:07:55Z INFO  post_jobs_handler] Post jobs
+thread 'main' panicked at 'Hello World!', ./tmp/job_1/main.rs:1:13
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
-[2022-09-03T04:02:05Z INFO  post_jobs_handler] job run success
-[2022-09-03T04:02:05Z INFO  actix_web::middleware::logger] 127.0.0.1 "POST /jobs HTTP/1.1" 200 423 "-" "-" 0.331140
-[2022-09-03T04:02:05Z INFO  post_jobs_handler] Post jobs
+[2022-09-03T05:07:55Z INFO  post_jobs_handler] job run success
+[2022-09-03T05:07:55Z INFO  actix_web::middleware::logger] 127.0.0.1 "POST /jobs HTTP/1.1" 200 423 "-" "-" 0.286483
+[2022-09-03T05:07:55Z INFO  post_jobs_handler] Post jobs
 error: 1 positional argument in format string, but no arguments were given
- --> ./tmp/job_0/main.rs:1:35
+ --> ./tmp/job_2/main.rs:1:35
   |
 1 | fn main() { println!("Hello World!{}"); }
   |                                   ^^
 
 error: aborting due to previous error
 
-[2022-09-03T04:02:05Z INFO  post_jobs_handler] job run success
-[2022-09-03T04:02:05Z INFO  actix_web::middleware::logger] 127.0.0.1 "POST /jobs HTTP/1.1" 200 423 "-" "-" 0.162894
+[2022-09-03T05:07:56Z INFO  post_jobs_handler] job run success
+[2022-09-03T05:07:56Z INFO  actix_web::middleware::logger] 127.0.0.1 "POST /jobs HTTP/1.1" 200 423 "-" "-" 0.108766

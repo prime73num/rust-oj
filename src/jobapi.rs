@@ -18,24 +18,27 @@ use crate::ErrorResponse;
 
 #[post("/jobs")]
 pub async fn post_jobs(info: web::Json<JobInfo>, config: web::Data<Config>) -> impl Responder {
+    log::info!(target: "post_jobs_handler", "Post jobs");
+
     let info = info.into_inner();
     let job_data = JOBDATA.clone();
     let mut job_data_inner = job_data.lock().unwrap();
+
     let id = job_data_inner.total_jobs;
     let user_name = job_data_inner.user_list.iter().find(|x| {
         x.id == info.user_id
     }).unwrap();
     let job = Job::new(&user_name.name, id, info);
-    log::info!(target: "post_jobs_handler", "Post jobs");
-    if !job.is_valid(&config) {
+
+    let res = job_data_inner.add_job(job, &config);
+
+    if res.is_none() {
         log::info!(target: "post_jobs_handler", "ERR_INVALID_ARGUMENT");
         return HttpResponseBuilder::new(StatusCode::NOT_FOUND)
             .json(ErrorResponse::new(1, "ERR_INVALID_ARGUMENT"));
     }
-    job_data_inner.job_list.push(job);
-    job_data_inner.total_jobs += 1;
-    let res = job_data_inner.job_list.last_mut().unwrap().run(&config);
-    println!("{}", serde_json::to_string_pretty(&res).unwrap());
+    let res = res.unwrap();
+
     log::info!(target: "post_jobs_handler", "job run success");
     return HttpResponse::Ok().json(res);
 }
@@ -114,6 +117,7 @@ pub async fn get_jobs_id(jobid: web::Path<u32>) -> impl Responder {
     }).map(|x| {
         x.response()
     });
+    drop(job_data_inner);
     if response.is_none() {
         return HttpResponseBuilder::new(StatusCode::NOT_FOUND)
             .reason( "Job 123456 not found." )
@@ -145,26 +149,24 @@ pub async fn put_job(jobid: web::Path<u32>, config: web::Data<Config>) -> impl R
 }
 
 #[delete("/jobs/{jobid}")]
-pub async fn delete_job(jobid: web::Path<u32>, config: web::Data<Config>) -> impl Responder {
+pub async fn delete_job(jobid: web::Path<u32>) -> impl Responder {
     let job_data = JOBDATA.clone();
     let mut job_data_inner = job_data.lock().unwrap();
-    let job = job_data_inner.job_list.iter_mut().find(|x| {
-        x.job_id==*jobid
+    let job = job_data_inner.job_list.iter_mut().enumerate().find(|x| {
+        x.1.job_id==*jobid
     });
     if job.is_none() {
         return HttpResponseBuilder::new(StatusCode::NOT_FOUND)
             .reason( "Job 123456 not found." )
             .json(ErrorResponse::new(3, "ERR_NOT_FOUND"));
     }
-    let job = job.unwrap();
+    let (idx, job) = job.unwrap();
     if job.state != State::Queueing {
         return HttpResponseBuilder::new(StatusCode::BAD_REQUEST)
             .reason( "Job 123456 not queuing." )
             .json(ErrorResponse::new(2, "ERR_INVALID_STATE"));
     }
-    job.run(&config);
-    job.state = State::Canceled;
-
+    job_data_inner.job_list.remove(idx);
     return HttpResponse::Ok().finish();
 }
 

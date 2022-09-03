@@ -4,7 +4,7 @@ pub mod config;
 pub mod job;
 
 use std::sync::{Mutex, Arc};
-use job::JobInfo;
+use job::{JobInfo, Job};
 use lazy_static::lazy_static;
 use serde::{Serialize, Deserialize};
 
@@ -17,6 +17,19 @@ pub struct JobData {
     job_list: Vec<job::Job>,
     total_jobs: u32,
     user_list: Vec<User>
+}
+
+impl JobData {
+    fn add_job(&mut self, mut job : Job, config: &config::Config) -> Option<Response> {
+        if !job.is_valid(config) {
+            return None;
+        }
+        job.run(config);
+        let res = job.response();
+        self.total_jobs += 1;
+        self.job_list.push(job);
+        Some(res)
+    }
 }
 
 impl Default for JobData{
