@@ -24,18 +24,12 @@ pub async fn post_jobs(info: web::Json<JobInfo>, config: web::Data<Config>) -> i
     let job_data = JOBDATA.clone();
     let mut job_data_inner = job_data.lock().unwrap();
 
-    let id = job_data_inner.total_jobs;
-    let user_name = job_data_inner.user_list.iter().find(|x| {
-        x.id == info.user_id
-    }).unwrap();
-    let job = Job::new(&user_name.name, id, info);
-
-    let res = job_data_inner.add_job(job, &config);
+    let res = job_data_inner.add_job(info, &config);
 
     if res.is_none() {
-        log::info!(target: "post_jobs_handler", "ERR_INVALID_ARGUMENT");
+        log::info!(target: "post_jobs_handler", "ERR_NOT_FOUND");
         return HttpResponseBuilder::new(StatusCode::NOT_FOUND)
-            .json(ErrorResponse::new(1, "ERR_INVALID_ARGUMENT"));
+            .json(ErrorResponse::new(3, "ERR_NOT_FOUND"));
     }
     let res = res.unwrap();
 

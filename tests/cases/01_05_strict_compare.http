@@ -9,6 +9,6 @@ content-type: application/json
 # HTTP 200
 # content-length: 421
 # content-type: application/json
-# date: Sat, 03 Sep 2022 05:08:04 GMT
+# date: Sat, 03 Sep 2022 07:22:35 GMT
 # 
-# {"cases":[{"id":0,"info":"","memory":0,"result":"Compilation Success","time":0},{"id":1,"info":"","memory":0,"result":"Wrong Answer","time":0}],"created_time":"2022-09-03T05:08:04.702Z","id":0,"result":"Wrong Answer","score":0.0,"state":"Finished","submission":{"contest_id":0,"language":"Rust","problem_id":0,"source_code":"fn main() { print!(\"Hello World!\"); }","user_id":0},"updated_time":"2022-09-03T05:08:04.702Z"}
+# {"cases":[{"id":0,"info":"","memory":0,"result":"Compilation Success","time":0},{"id":1,"info":"","memory":0,"result":"Wrong Answer","time":0}],"created_time":"2022-09-03T07:22:35.506Z","id":0,"result":"Wrong Answer","score":0.0,"state":"Finished","submission":{"contest_id":0,"language":"Rust","problem_id":0,"source_code":"fn main() { print!(\"Hello World!\"); }","user_id":0},"updated_time":"2022-09-03T07:22:35.506Z"}
