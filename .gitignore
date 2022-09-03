@@ -1,6 +1,6 @@
 /target
-/* *.stdout */
-/* *.stderr */
-/* *.http */
-/* tmp/ */
+*.stdout
+*.stderr
+*.http
+tmp/
 /request.py
