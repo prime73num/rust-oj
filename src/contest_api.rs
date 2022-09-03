@@ -7,7 +7,7 @@ use actix_web::{
 };
 use serde::{Serialize, Deserialize};
 
-use crate::{JOBDATA, config, ErrorResponse};
+use crate::{JOBDATA, config, ErrorResponse, AppError};
 
 #[derive(Debug, Serialize, Clone)]
 pub struct ContestInfo {
@@ -46,21 +46,12 @@ pub struct HttpcomInfo {
 }
 
 #[post("/contests")]
-pub async fn post_contests(info: web::Json<HttpcomInfo>, config: web::Data<config::Config>) -> impl Responder {
+pub async fn post_contests(info: web::Json<HttpcomInfo>, config: web::Data<config::Config>) -> Result<HttpResponse, AppError> {
     let job_data = JOBDATA.clone();
     let mut job_data_inner = job_data.lock().unwrap();
 
-    let res = job_data_inner.post_contest(info.into_inner(), &config);
-    match res {
-        Some(contest) => {
-            return HttpResponse::Ok().json(contest);
-        },
-        None => {
-            return HttpResponseBuilder::new(StatusCode::NOT_FOUND)
-                .reason("Contest 114514 not found.")
-                .json(ErrorResponse::new(3, "ERR_NOT_FOUND"));
-        }
-    }
+    let res = job_data_inner.post_contest(info.into_inner(), &config)?;
+    return Ok(HttpResponse::Ok().json(res));
 }
 
 #[get("/contests")]

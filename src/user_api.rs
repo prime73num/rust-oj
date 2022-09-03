@@ -2,12 +2,11 @@
 use actix_web::{
     get, post, web, 
     Responder, 
-    HttpResponse, HttpResponseBuilder,
-    http::StatusCode
+    HttpResponse,
 };
 use serde::{Serialize, Deserialize};
 
-use crate::{JOBDATA, UserRes, ErrorResponse, User, AppError};
+use crate::{JOBDATA, User, AppError};
 
 
 #[derive(Debug, Serialize, Deserialize)]

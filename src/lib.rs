@@ -79,22 +79,47 @@ pub struct JobData {
 }
 
 impl JobData {
-    pub fn add_job(&mut self, info: JobInfo, config: &config::Config) -> Option<Response> {
+    pub fn add_job(&mut self, info: JobInfo, config: &config::Config) -> Result<Response, AppError> {
         let id = self.total_jobs;
         let res = self.user_list.iter().find(|x| x.id==info.user_id);
         if res.is_none() {
-            return None;
+            return Err(AppError::ERR_NOT_FOUND);
         }
         let user_name = &res.unwrap().name;
         let mut job = Job::new(&user_name, id, info);
         if !job.is_valid(config) {
-            return None;
+            return Err(AppError::ERR_NOT_FOUND);
         }
         job.run(config);
         let res = job.response();
         self.total_jobs += 1;
         self.job_list.push(job);
-        Some(res)
+        Ok(res)
+    }
+    pub fn find_job_mut(&mut self, jobid: u32) -> Result<&mut Job, AppError> {
+        let response = self.job_list.iter_mut().find(|x| {
+            x.job_id==jobid
+        });
+        return response.map_or(
+            Err(AppError::ERR_NOT_FOUND),
+            |x| { Ok(x) }
+            );
+    }
+    pub fn find_job(&self, jobid: u32) -> Result<&Job, AppError> {
+        let response = self.job_list.iter().find(|x| {
+            x.job_id==jobid
+        });
+        return response.map_or(
+            Err(AppError::ERR_NOT_FOUND),
+            |x| { Ok(x) }
+            );
+    }
+    pub fn get_job_response(&self, jobid: u32) -> Result<Response, AppError> {
+        let response = self.find_job(jobid);
+        return response.map_or(
+            Err(AppError::ERR_NOT_FOUND),
+            |x| { Ok(x.response()) }
+            );
     }
     pub fn post_user(&mut self, mut info: UserInfo) -> Result<User, AppError> {
         if let Some(id) = info.id {
@@ -123,33 +148,37 @@ impl JobData {
             },
         }
     }
-    pub fn post_contest(&mut self, mut info: HttpcomInfo, config: &config::Config) -> Option<ContestInfo> {
+    pub fn post_contest(&mut self, mut info: HttpcomInfo, config: &config::Config) -> Result<ContestInfo, AppError> {
         if let Some(id) = info.id {
             if self.contests_list.iter().find(|x| x.0.id==id).is_none() {
-                return None;
+                return Err(AppError::ERR_NOT_FOUND);
             }
         }
         let res = info.user_ids.iter().all(|x| {
             self.user_list.iter().find(|user| {user.id==*x}).is_some()
         });
-        if !res { return None; }
+        if !res {
+            return Err(AppError::ERR_NOT_FOUND);
+        }
         let res = info.problem_ids.iter().all(|x| {
             config.problems.iter().find(|problem| {problem.id==*x}).is_some()
         });
-        if !res { return None; }
+        if !res {
+            return Err(AppError::ERR_NOT_FOUND);
+        }
 
         match info.id {
             Some(id) => {
                 let contest = ContestInfo::from(info);
                 let pos = self.contests_list.iter_mut().find(|x| x.0.id==id).unwrap();
                 pos.0 = contest.clone();
-                return Some(contest);
+                return Ok(contest);
             },
             None => {
                 info.id = Some(self.total_contests);
                 let contest = ContestInfo::from(info);
                 self.contests_list.push((contest.clone(), HashMap::new()));
-                return Some(contest);
+                return Ok(contest);
             },
         }
     }

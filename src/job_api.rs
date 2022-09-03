@@ -3,8 +3,7 @@
 use actix_web::{
     delete, put, get, post, web, 
     Responder, 
-    HttpResponse, HttpResponseBuilder,
-    http::StatusCode
+    HttpResponse,
 };
 use chrono::DateTime;
 use log;
@@ -12,29 +11,21 @@ use serde::{Serialize, Deserialize};
 
 use crate::config::Config;
 use crate::job::{JobInfo, Job};
-use crate::{JOBDATA, State, RunResult, Response};
-use crate::ErrorResponse;
+use crate::{JOBDATA, State, RunResult, Response, AppError};
 
 
 #[post("/jobs")]
-pub async fn post_jobs(info: web::Json<JobInfo>, config: web::Data<Config>) -> impl Responder {
+pub async fn post_jobs(info: web::Json<JobInfo>, config: web::Data<Config>) -> Result<HttpResponse, AppError> {
     log::info!(target: "post_jobs_handler", "Post jobs");
 
     let info = info.into_inner();
     let job_data = JOBDATA.clone();
     let mut job_data_inner = job_data.lock().unwrap();
 
-    let res = job_data_inner.add_job(info, &config);
-
-    if res.is_none() {
-        log::info!(target: "post_jobs_handler", "ERR_NOT_FOUND");
-        return HttpResponseBuilder::new(StatusCode::NOT_FOUND)
-            .json(ErrorResponse::new(3, "ERR_NOT_FOUND"));
-    }
-    let res = res.unwrap();
+    let res = job_data_inner.add_job(info, &config)?;
 
     log::info!(target: "post_jobs_handler", "job run success");
-    return HttpResponse::Ok().json(res);
+    return Ok(HttpResponse::Ok().json(res));
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -103,64 +94,40 @@ pub async fn get_jobs(query: web::Query<UrlQuery>) -> impl Responder {
 }
 
 #[get("/jobs/{jobid}")]
-pub async fn get_jobs_id(jobid: web::Path<u32>) -> impl Responder {
+pub async fn get_jobs_id(jobid: web::Path<u32>) -> Result<HttpResponse, AppError> {
     let job_data = JOBDATA.clone();
     let job_data_inner = job_data.lock().unwrap();
-    let response = job_data_inner.job_list.iter().find(|x| {
-        x.job_id==*jobid
-    }).map(|x| {
-        x.response()
-    });
-    drop(job_data_inner);
-    if response.is_none() {
-        return HttpResponseBuilder::new(StatusCode::NOT_FOUND)
-            .reason( "Job 123456 not found." )
-            .json(ErrorResponse::new(3, "ERR_NOT_FOUND"));
-    }
-    return HttpResponse::Ok().json(response.unwrap());
+    let response = job_data_inner.get_job_response(*jobid)?;
+    return Ok(HttpResponse::Ok().json(response));
 }
 #[put("/jobs/{jobid}")]
-pub async fn put_job(jobid: web::Path<u32>, config: web::Data<Config>) -> impl Responder {
+pub async fn put_job(jobid: web::Path<u32>, config: web::Data<Config>) -> Result<HttpResponse, AppError> {
     let job_data = JOBDATA.clone();
     let mut job_data_inner = job_data.lock().unwrap();
-    let job = job_data_inner.job_list.iter_mut().find(|x| {
-        x.job_id==*jobid
-    });
-    if job.is_none() {
-        return HttpResponseBuilder::new(StatusCode::NOT_FOUND)
-            .reason( "Job 123456 not found." )
-            .json(ErrorResponse::new(3, "ERR_NOT_FOUND"));
-    }
-    let job = job.unwrap();
+    let job = job_data_inner.find_job_mut(*jobid)?;
     if job.state != State::Finished {
-        return HttpResponseBuilder::new(StatusCode::BAD_REQUEST)
-            .reason( "Job 123456 not finished." )
-            .json(ErrorResponse::new(2, "ERR_INVALID_STATE"));
+        return Err(AppError::ERR_INVALID_STATE);
     }
     job.run(&config);
 
-    return HttpResponse::Ok().json(job.response());
+    return Ok(HttpResponse::Ok().json(job.response()));
 }
 
 #[delete("/jobs/{jobid}")]
-pub async fn delete_job(jobid: web::Path<u32>) -> impl Responder {
+pub async fn delete_job(jobid: web::Path<u32>) -> Result<HttpResponse, AppError> {
     let job_data = JOBDATA.clone();
     let mut job_data_inner = job_data.lock().unwrap();
     let job = job_data_inner.job_list.iter_mut().enumerate().find(|x| {
         x.1.job_id==*jobid
     });
     if job.is_none() {
-        return HttpResponseBuilder::new(StatusCode::NOT_FOUND)
-            .reason( "Job 123456 not found." )
-            .json(ErrorResponse::new(3, "ERR_NOT_FOUND"));
+        return Err(AppError::ERR_NOT_FOUND);
     }
     let (idx, job) = job.unwrap();
     if job.state != State::Queueing {
-        return HttpResponseBuilder::new(StatusCode::BAD_REQUEST)
-            .reason( "Job 123456 not queuing." )
-            .json(ErrorResponse::new(2, "ERR_INVALID_STATE"));
+        return Err(AppError::ERR_INVALID_STATE);
     }
     job_data_inner.job_list.remove(idx);
-    return HttpResponse::Ok().finish();
+    return Ok(HttpResponse::Ok().finish());
 }
 
