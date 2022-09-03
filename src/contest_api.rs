@@ -68,7 +68,7 @@ pub async fn get_contests() -> impl Responder {
     let job_data = JOBDATA.clone();
     let job_data_inner = job_data.lock().unwrap();
 
-    let mut temp_user_list: Vec<ContestInfo> = job_data_inner.contests_list.iter().map(|x| {x.clone()}).collect();
+    let mut temp_user_list: Vec<ContestInfo> = job_data_inner.contests_list.iter().map(|x| {x.0.clone()}).collect();
     temp_user_list.sort_by_key(|x| {x.id});
     return HttpResponse::Ok().json(temp_user_list);
 }
@@ -78,7 +78,7 @@ pub async fn get_contest_id(id: web::Path<u32>) -> impl Responder {
     let job_data = JOBDATA.clone();
     let job_data_inner = job_data.lock().unwrap();
     let res = job_data_inner.contests_list.iter().find(|x| {
-        x.id == *id
+        x.0.id == *id
     });
 
     match res {

@@ -6,25 +6,75 @@ pub mod job_api;
 pub mod user_api;
 pub mod contest_api;
 
-use std::sync::{Mutex, Arc};
+use std::{sync::{Mutex, Arc}, collections::HashMap};
+
+use actix_web::{
+    ResponseError, http::StatusCode, body::BoxBody,
+    HttpResponse, HttpResponseBuilder
+};
 use lazy_static::lazy_static;
 use serde::{Serialize, Deserialize};
+use derive_more::{Display, Error};
 
 use user_api::UserInfo;
 use job::{JobInfo, Job};
 use contest_api::{ContestInfo, HttpcomInfo};
 
 
+
 lazy_static!(
     pub static ref JOBDATA: Arc<Mutex<JobData>> = Arc::default();
 );
+
+
+#[derive(Debug, Display, Error)]
+#[allow(non_camel_case_types)]
+pub enum AppError {
+    ERR_INVALID_ARGUMENT,
+    ERR_INVALID_STATE,
+    ERR_NOT_FOUND,
+    ERR_RATE_LIMIT,
+    ERR_EXTERNAL,
+    ERR_INTERNAL
+}
+
+impl AppError {
+    fn to_response(&self) -> ErrorResponse {
+        match self {
+            AppError::ERR_INVALID_ARGUMENT => { ErrorResponse::new(1, &self.to_string()) },
+            AppError::ERR_INVALID_STATE => { ErrorResponse::new(2, &self.to_string()) },
+            AppError::ERR_NOT_FOUND => { ErrorResponse::new(3, &self.to_string()) },
+            AppError::ERR_RATE_LIMIT => { ErrorResponse::new(4, &self.to_string() ) },
+            AppError::ERR_EXTERNAL => { ErrorResponse::new(5,&self.to_string() ) },
+            AppError::ERR_INTERNAL => { ErrorResponse::new(6, &self.to_string()) },
+        }
+    }
+}
+
+impl ResponseError for AppError {
+    fn error_response(&self) -> HttpResponse<BoxBody> {
+        HttpResponseBuilder::new(self.status_code()).json(self.to_response())
+    }
+    fn status_code(&self) -> StatusCode {
+        match self {
+            AppError::ERR_INVALID_ARGUMENT => { StatusCode::BAD_REQUEST },
+            AppError::ERR_INVALID_STATE => { StatusCode::BAD_REQUEST },
+            AppError::ERR_NOT_FOUND => { StatusCode::NOT_FOUND },
+            AppError::ERR_RATE_LIMIT => { StatusCode::BAD_REQUEST},
+            AppError::ERR_EXTERNAL => { StatusCode::INTERNAL_SERVER_ERROR },
+            AppError::ERR_INTERNAL => { StatusCode::INTERNAL_SERVER_ERROR },
+        }
+    }
+}
+
+
 
 pub struct JobData {
     job_list: Vec<job::Job>,
     total_jobs: u32,
     user_list: Vec<User>,
     total_users: u32,
-    contests_list: Vec<ContestInfo>,
+    contests_list: Vec<(ContestInfo, HashMap<(u32, u32), u32>)>,
     total_contests: u32,
 }
 
@@ -46,36 +96,36 @@ impl JobData {
         self.job_list.push(job);
         Some(res)
     }
-    pub fn post_user(&mut self, mut info: UserInfo) -> UserRes {
+    pub fn post_user(&mut self, mut info: UserInfo) -> Result<User, AppError> {
         if let Some(id) = info.id {
             let res = self.user_list.iter().find(|x| {
                 x.id == id
             });
-            if res.is_none() { return UserRes::IdNotFound; }
+            if res.is_none() { return Err(AppError::ERR_NOT_FOUND); }
         }
         if self.user_list.iter().find(|x| {
             x.name == info.name
-        }).is_some() { return UserRes::NameExit;}
+        }).is_some() { return Err(AppError::ERR_INVALID_ARGUMENT);}
         match info.id {
             Some(id) => {
                 let user = self.user_list.iter_mut().find(|x| {
                     x.id == id
                 }).unwrap();
                 *user = User::from(info);
-                UserRes::Succecc(user.clone())
+                Ok(user.clone())
             },
             None => {
                 info.id = Some(self.total_users);
                 let temp = User::from(info);
                 self.user_list.push(temp.clone());
                 self.total_users += 1;
-                UserRes::Succecc(temp)
+                Ok(temp)
             },
         }
     }
     pub fn post_contest(&mut self, mut info: HttpcomInfo, config: &config::Config) -> Option<ContestInfo> {
         if let Some(id) = info.id {
-            if self.contests_list.iter().find(|x| x.id==id).is_none() {
+            if self.contests_list.iter().find(|x| x.0.id==id).is_none() {
                 return None;
             }
         }
@@ -91,14 +141,14 @@ impl JobData {
         match info.id {
             Some(id) => {
                 let contest = ContestInfo::from(info);
-                let pos = self.contests_list.iter_mut().find(|x| x.id==id).unwrap();
-                *pos = contest.clone();
+                let pos = self.contests_list.iter_mut().find(|x| x.0.id==id).unwrap();
+                pos.0 = contest.clone();
                 return Some(contest);
             },
             None => {
                 info.id = Some(self.total_contests);
                 let contest = ContestInfo::from(info);
-                self.contests_list.push(contest.clone());
+                self.contests_list.push((contest.clone(), HashMap::new()));
                 return Some(contest);
             },
         }

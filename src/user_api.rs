@@ -7,7 +7,7 @@ use actix_web::{
 };
 use serde::{Serialize, Deserialize};
 
-use crate::{JOBDATA, UserRes, ErrorResponse, User};
+use crate::{JOBDATA, UserRes, ErrorResponse, User, AppError};
 
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -17,28 +17,15 @@ pub struct UserInfo {
 }
 
 #[post("/users")]
-pub async fn post_users(info: web::Json<UserInfo>) -> impl Responder {
+pub async fn post_users(info: web::Json<UserInfo>) -> Result<HttpResponse, AppError> {
     let job_data = JOBDATA.clone();
     let mut job_data_inner = job_data.lock().unwrap();
 
-    let res = job_data_inner.post_user(info.into_inner());
+    let res = job_data_inner.post_user(info.into_inner())?;
 
     log::info!("post users result {:?}", &res);
-    match res {
-        UserRes::Succecc(u) => {
-            return HttpResponse::Ok().json(u);
-        },
-        UserRes::IdNotFound => {
-            return HttpResponseBuilder::new(StatusCode::NOT_FOUND)
-                .reason("User 123456 not found.")
-                .json(ErrorResponse::new(3, "ERR_NOT_FOUND"));
-        },
-        UserRes::NameExit => {
-            return HttpResponseBuilder::new(StatusCode::BAD_REQUEST)
-                .reason("User name already exists")
-                .json(ErrorResponse::new(1, "ERR_INVALID_ARGUMENT"));
-        },
-    }
+
+    return Ok(HttpResponse::Ok().json(res));
 }
 
 #[get("/users")]

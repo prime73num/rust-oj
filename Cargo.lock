@@ -974,6 +974,7 @@ dependencies = [
  "assert-json-diff",
  "chrono",
  "clap",
+ "derive_more",
  "env_logger",
  "lazy_static",
  "log",
