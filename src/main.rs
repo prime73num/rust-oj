@@ -10,6 +10,7 @@ use clap::{Command, arg};
 
 use oj::job_api;
 use oj::user_api;
+use oj::contest_api;
 use oj::config::Config;
 
 #[get("/hello/{name}")]
@@ -59,6 +60,10 @@ async fn main() -> std::io::Result<()> {
             .service(job_api::delete_job)
             .service(user_api::post_users)
             .service(user_api::get_users)
+            .service(contest_api::post_contests)
+            .service(contest_api::get_contests)
+            .service(contest_api::get_contest_id)
+            .service(contest_api::get_contest_ranklist)
     })
     .bind(("127.0.0.1", 12345))?
     .run()

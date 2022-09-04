@@ -36,7 +36,7 @@ fn test_04_5_pts_user_support() {
 }
 
 #[test]
-#[ignore]
+// #[ignore]
 fn test_05_5_pts_ranklist_support() {
     // check global ranklist support after several submissions
     TestCase::read("05_01_global_ranklist").run();

@@ -16,7 +16,6 @@ use crate::{JOBDATA, State, RunResult, Response, AppError};
 
 #[post("/jobs")]
 pub async fn post_jobs(info: web::Json<JobInfo>, config: web::Data<Config>) -> Result<HttpResponse, AppError> {
-    log::info!(target: "post_jobs_handler", "Post jobs");
 
     let info = info.into_inner();
     let job_data = JOBDATA.clone();
@@ -24,7 +23,7 @@ pub async fn post_jobs(info: web::Json<JobInfo>, config: web::Data<Config>) -> R
 
     let res = job_data_inner.add_job(&info, &config)?;
 
-    log::info!(target: "post_jobs_handler", "job run success");
+    log::info!(target: "post_jobs_handler", "post job {}", res.id);
     return Ok(HttpResponse::Ok().json(res));
 }
 
@@ -90,6 +89,7 @@ pub async fn get_jobs(query: web::Query<UrlQuery>) -> impl Responder {
         x.response()
     }).collect();
     drop(job_data_inner);
+    log::info!(target: "get jobs", "get jobs list");
     return HttpResponse::Ok().json(res);
 }
 
@@ -98,6 +98,7 @@ pub async fn get_jobs_id(jobid: web::Path<u32>) -> Result<HttpResponse, AppError
     let job_data = JOBDATA.clone();
     let job_data_inner = job_data.lock().unwrap();
     let response = job_data_inner.get_job_response(*jobid)?;
+    log::info!(target: "get_jobs_id", "get jobs {}", response.id);
     return Ok(HttpResponse::Ok().json(response));
 }
 #[put("/jobs/{jobid}")]
@@ -110,6 +111,7 @@ pub async fn put_job(jobid: web::Path<u32>, config: web::Data<Config>) -> Result
     }
     job.run(&config);
 
+    log::info!(target: "put_job", "put jobs {}", job.job_id);
     return Ok(HttpResponse::Ok().json(job.response()));
 }
 
@@ -127,6 +129,7 @@ pub async fn delete_job(jobid: web::Path<u32>) -> Result<HttpResponse, AppError>
     if job.state != State::Queueing {
         return Err(AppError::ERR_INVALID_STATE);
     }
+    log::info!(target: "delete_job", "delete job {}", job.job_id);
     job_data_inner.job_list.remove(idx);
     return Ok(HttpResponse::Ok().finish());
 }
