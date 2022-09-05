@@ -24,15 +24,11 @@ pub struct ContestInfo {
 
 impl ContestInfo {
     pub fn is_valid(&self, jobinfo: &JobInfo) -> bool {
-        if !self.problem_ids.iter().any(|x| {
-            *x == jobinfo.problem_id
-        }) { return false;}
-        if !self.user_ids.iter().any(|x| {
-            *x == jobinfo.user_id
-        }) { return false;}
-        let from = DateTime::parse_from_str(&self.from, "%Y-%m-%dT%H:%M:%S%.3fZ").unwrap();
+        if !self.problem_ids.contains(&jobinfo.problem_id) { return false;}
+        if !self.user_ids.contains(&jobinfo.user_id) { return false;}
+        let from : DateTime<Utc> = self.from.parse().unwrap();
         if from > Utc::now() { return false;}
-        let to = DateTime::parse_from_str(&self.to, "%Y-%m-%dT%H:%M:%S%.3fZ").unwrap();
+        let to : DateTime<Utc> = self.to.parse().unwrap();
         if to < Utc::now() { return false;}
         return true;
     }
@@ -229,18 +225,20 @@ pub async fn get_contest_ranklist(
             });
             let (pro_score, created_time) = submission_set.clone()
             .max_by( |a, b| { score_rule(a, b) } )
-            .map_or((0.0, Utc::now()), |job| {
-                (job.score, job.created_time)
+            .map_or((0.0, None), |job| {
+                (job.score, Some(job.created_time))
             });
 
-            match time {
-                Some(latest) => {
-                    if created_time > latest {
-                        time = Some(created_time)
+            if let Some(update) = created_time {
+                match time {
+                    Some(latest) => {
+                        if update > latest {
+                            time = Some(update)
+                        }
+                    },
+                    None => {
+                        time = Some(update)
                     }
-                },
-                None => {
-                    time = Some(created_time)
                 }
             }
             submission_count += submission_set.count();
@@ -280,6 +278,5 @@ pub async fn get_contest_ranklist(
             x.0
         }).collect();
 
-    println!("{}", serde_json::to_string_pretty(&res).unwrap());
     return Ok(HttpResponse::Ok().json(res));
 }

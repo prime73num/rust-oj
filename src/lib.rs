@@ -91,7 +91,7 @@ impl JobData {
         let mut submission_time = &mut temp;
         if info.contest_id != 0 {
             let contest = self.find_contest_mut(info.contest_id)?;
-            if contest.0.is_valid(&info) { 
+            if !contest.0.is_valid(&info) { 
                 return Err(AppError::ERR_INVALID_ARGUMENT);
             }
             let entry = contest.1.entry((info.user_id, info.problem_id)).or_insert(0);
@@ -217,6 +217,7 @@ impl JobData {
             },
             None => {
                 info.id = Some(self.total_contests);
+                self.total_contests += 1;
                 let contest = ContestInfo::from(info);
                 self.contests_list.push((contest.clone(), HashMap::new()));
                 return Ok(contest);
@@ -239,7 +240,7 @@ impl Default for JobData{
             user_list,
             total_users: 1,
             contests_list: Vec::new(),
-            total_contests: 0
+            total_contests: 1
         }
     }
 }
