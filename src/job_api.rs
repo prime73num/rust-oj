@@ -14,6 +14,7 @@ use crate::job::{JobInfo, Job};
 use crate::{JOBDATA, State, RunResult, Response, AppError};
 
 
+// post a job
 #[post("/jobs")]
 pub async fn post_jobs(info: web::Json<JobInfo>, config: web::Data<Config>) -> Result<HttpResponse, AppError> {
 
@@ -27,6 +28,7 @@ pub async fn post_jobs(info: web::Json<JobInfo>, config: web::Data<Config>) -> R
     return Ok(HttpResponse::Ok().json(res));
 }
 
+// use this struct to filter job
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UrlQuery {
     user_id: Option<u32>,
@@ -41,6 +43,7 @@ pub struct UrlQuery {
 }
 
 impl UrlQuery {
+    // decide whether the job meets the predicate
     pub fn predicate(&self, job: &Job) -> bool {
         if !self.user_id.map_or(true, |x| {
             job.info.user_id==x
@@ -75,6 +78,7 @@ impl UrlQuery {
     }
 }
 
+// get the job list the a query
 #[get("/jobs")]
 pub async fn get_jobs(query: web::Query<UrlQuery>) -> impl Responder {
     let query = query.into_inner();
@@ -84,7 +88,7 @@ pub async fn get_jobs(query: web::Query<UrlQuery>) -> impl Responder {
     temp_job_list.sort_by_key(|x| {x.created_time});
 
     let res: Vec<Response> = temp_job_list.iter().filter(|job| {
-        query.predicate(job)
+        query.predicate(job)   // use this to filter
     }).map(|x| {
         x.response()
     }).collect();
@@ -93,6 +97,7 @@ pub async fn get_jobs(query: web::Query<UrlQuery>) -> impl Responder {
     return HttpResponse::Ok().json(res);
 }
 
+// get job with the id
 #[get("/jobs/{jobid}")]
 pub async fn get_jobs_id(jobid: web::Path<u32>) -> Result<HttpResponse, AppError> {
     let job_data = JOBDATA.clone();
@@ -101,6 +106,8 @@ pub async fn get_jobs_id(jobid: web::Path<u32>) -> Result<HttpResponse, AppError
     log::info!(target: "get_jobs_id", "get jobs {}", response.id);
     return Ok(HttpResponse::Ok().json(response));
 }
+
+// rerun the job of the id
 #[put("/jobs/{jobid}")]
 pub async fn put_job(jobid: web::Path<u32>, config: web::Data<Config>) -> Result<HttpResponse, AppError> {
     let job_data = JOBDATA.clone();
@@ -115,6 +122,7 @@ pub async fn put_job(jobid: web::Path<u32>, config: web::Data<Config>) -> Result
     return Ok(HttpResponse::Ok().json(job.response()));
 }
 
+// delete the job
 #[delete("/jobs/{jobid}")]
 pub async fn delete_job(jobid: web::Path<u32>) -> Result<HttpResponse, AppError> {
     let job_data = JOBDATA.clone();

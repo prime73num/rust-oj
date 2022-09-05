@@ -11,6 +11,7 @@ use serde::{Serialize, Deserialize};
 use crate::{JOBDATA, config, AppError, job::{JobInfo, Job}, User};
 
 
+// this struct represent the json content of the contest http request
 #[derive(Debug, Serialize, Clone)]
 pub struct ContestInfo {
     pub id: u32,
@@ -56,6 +57,7 @@ pub struct HttpcomInfo {
     pub submission_limit: u32
 }
 
+// post a contest
 #[post("/contests")]
 pub async fn post_contests(info: web::Json<HttpcomInfo>, config: web::Data<config::Config>) -> Result<HttpResponse, AppError> {
     let job_data = JOBDATA.clone();
@@ -66,6 +68,7 @@ pub async fn post_contests(info: web::Json<HttpcomInfo>, config: web::Data<confi
     return Ok(HttpResponse::Ok().json(res));
 }
 
+// get contest list
 #[get("/contests")]
 pub async fn get_contests() -> impl Responder {
     let job_data = JOBDATA.clone();
@@ -77,6 +80,7 @@ pub async fn get_contests() -> impl Responder {
     return HttpResponse::Ok().json(temp_user_list);
 }
 
+// get the contest of id
 #[get("/contests/{contestid}")]
 pub async fn get_contest_id(id: web::Path<u32>) -> Result<HttpResponse, AppError> {
     let job_data = JOBDATA.clone();
@@ -87,6 +91,7 @@ pub async fn get_contest_id(id: web::Path<u32>) -> Result<HttpResponse, AppError
     return Ok(HttpResponse::Ok().json(res.0.clone()));
 }
 
+// the ranklist argument
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RanklistArg {
     #[serde(default = "_default_scoring_rule")]
@@ -117,6 +122,7 @@ fn _default_tie_breaker() -> Tiebreaderarg {
     Tiebreaderarg::none
 }
 
+// the result of a user in the contest
 #[derive(Debug, Serialize, Deserialize)]
 struct ContestRes {
     user: User,
@@ -135,6 +141,7 @@ impl ContestRes {
 }
 
 
+// use this key with tie_breaker to sort the contest result
 #[derive(Debug)]
 struct SortKey {
     flag: Tiebreaderarg,
@@ -146,7 +153,9 @@ struct SortKey {
 
 impl SortKey {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        // first compare the total_score
         if self.total_score==other.total_score {
+            // use tie_breaker to compare
             match self.flag {
                 Tiebreaderarg::submission_time => {
                     return self.submission_time.cmp(&other.submission_time);
@@ -168,6 +177,7 @@ impl SortKey {
 
 
 
+// get the ranklist 
 #[get("/contests/{contestid}/ranklist")]
 pub async fn get_contest_ranklist(
     id: web::Path<u32>,
@@ -180,6 +190,7 @@ pub async fn get_contest_ranklist(
     let mut user: Vec<u32> = Vec::new();
     let mut problem: Vec<u32> = Vec::new();
 
+    // global contest list
     if *id==0 {
         job_data_inner.user_list.iter().for_each(|x| {
             user.push(x.id);
@@ -187,7 +198,7 @@ pub async fn get_contest_ranklist(
         config.problems.iter().for_each(|x| {
             problem.push(x.id);
         });
-    } else {
+    } else { // specify a contest id
         let contest = job_data_inner.find_contest(*id)?;
         user = contest.0.user_ids.clone();
         problem = contest.0.problem_ids.clone();
@@ -196,6 +207,7 @@ pub async fn get_contest_ranklist(
 
     log::info!(target: "get_contest_ranklist", "Get contest {} ranklist", id);
 
+    // a closure the get the score of one user
     let score_rule = |a: &Job, b: &Job| {
         match query.scoring_rule {
             Scorerule::latest => {
@@ -220,9 +232,11 @@ pub async fn get_contest_ranklist(
         let mut submission_count = 0;
         for problem_id in problem.iter() {
 
+            // find add submission of the user and the problem
             let submission_set = job_data_inner.job_list.iter().filter(|x| {
                 x.info.user_id==*user_id && x.info.problem_id==*problem_id && x.info.contest_id == *id
             });
+            // use the score_rule to get the result from the submission_set
             let (pro_score, created_time) = submission_set.clone()
             .max_by( |a, b| { score_rule(a, b) } )
             .map_or((0.0, None), |job| {
@@ -245,6 +259,7 @@ pub async fn get_contest_ranklist(
             score.push(pro_score);
             total_score += pro_score;
         }
+        // construct the information used to sort and rank
         let time = time.unwrap_or(Utc::now());
         let tie_breaker = SortKey { 
             submission_time: time, 
@@ -257,6 +272,7 @@ pub async fn get_contest_ranklist(
     }
 
     res.sort_by(|a, b| {
+        // use sort key to sort
         if a.1.cmp(&b.1) == Ordering::Equal {
             return a.1.user_id.cmp(&b.1.user_id);
         }
@@ -265,9 +281,15 @@ pub async fn get_contest_ranklist(
 
     let mut before_rank = 1;
     let mut before_score: Option<SortKey> = None;
+    // set the rank
     let res: Vec<ContestRes> = res.into_iter().enumerate()
         .map( |(idx, mut x)| {
+
+            // set the rank to the index in the list
             x.0.rank = (idx + 1) as u32;
+
+            // if have the same sort key with the before user 
+            // set the same rank of the before user
             if let Some(before) = &before_score {
                 if x.1.cmp(before)==Ordering::Equal {
                     x.0.rank = before_rank;

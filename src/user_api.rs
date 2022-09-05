@@ -15,6 +15,7 @@ pub struct UserInfo {
     pub name: String
 }
 
+// post a user
 #[post("/users")]
 pub async fn post_users(info: web::Json<UserInfo>) -> Result<HttpResponse, AppError> {
     let job_data = JOBDATA.clone();
@@ -26,6 +27,7 @@ pub async fn post_users(info: web::Json<UserInfo>) -> Result<HttpResponse, AppEr
     return Ok(HttpResponse::Ok().json(res));
 }
 
+// get user list
 #[get("/users")]
 pub async fn get_users() -> impl Responder {
     let job_data = JOBDATA.clone();

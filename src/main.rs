@@ -32,6 +32,7 @@ async fn exit() -> impl Responder {
 async fn main() -> std::io::Result<()> {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
+    // get config file from commond line argument
     let cmd = Command::new("cmd")
         .args(&[
             arg!(-c --config <CONFIG> "Specify a config file").required(false),
@@ -53,6 +54,7 @@ async fn main() -> std::io::Result<()> {
             .service(greet)
             // DO NOT REMOVE: used in automatic testing
             .service(exit)
+            // all the api function
             .service(job_api::post_jobs)
             .service(job_api::get_jobs)
             .service(job_api::get_jobs_id)

@@ -3,6 +3,11 @@ use serde::{Serialize, Deserialize};
 use serde_json::value::Value;
 
 
+
+// use this struct to parse and store the json config file
+// the struct has a same struct of the config file
+// problem struct is the represent the problem set
+// language struct represent the language set
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Config {
     server: Server,
@@ -50,6 +55,7 @@ pub struct Language {
 }
 
 impl Language {
+    // replace "%OUTPUT%" in the compile commond
     pub fn replace(&mut self, before: &str, after: &str) -> bool {
         let pos = self.command.iter_mut().find(|item| {*item==before});
         if let Some(pos) = pos {
@@ -60,6 +66,7 @@ impl Language {
     }
 }
 
+// some simple tests
 #[cfg(test)]
 mod test {
     use std::fs;
