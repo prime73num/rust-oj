@@ -1,4 +1,5 @@
 use std::fs::{write, File, self, OpenOptions};
+use std::io::Read;
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::{io, usize};
@@ -6,6 +7,7 @@ use std::{io, usize};
 use serde::Deserialize;
 use serde::Serialize;
 
+use serde_json::json;
 use wait_timeout::ChildExt;
 use std::time::Duration;
 
@@ -77,7 +79,7 @@ impl Job {
 
         let mut ans = true;
         for (i, case) in problem.cases.iter().enumerate() {
-            if !self.run_one_case(case, i+1) {
+            if !self.run_one_case(problem, case, i+1) {
                 self.state = State::Finished;
                 self.result = self.case_res[i+1].result;
                 return self.response();
@@ -153,8 +155,9 @@ impl Job {
             fs::remove_dir_all(&path).expect("Clear failed");
         }
     }
-    fn run_one_case(&mut self, case: &config::Case, caseidx: usize) -> bool {
+    fn run_one_case(&mut self, problem: &config::Problem, case: &config::Case, caseidx: usize) -> bool {
         let mut ret = false;
+        let mut info = String::new();
         let mut try_do = || -> io::Result<RunResult> {
             let input = File::open(&case.input_file)?;
             let output = OpenOptions::new().read(true).write(true).truncate(true).create(true)
@@ -167,10 +170,29 @@ impl Job {
                 Some(exit) => {
                     if exit.success() {
                         ret = true;
-                        let ans = fs::read_to_string(&case.answer_file)?;
-                        let out = fs::read_to_string(self.path("output"))?;
-                        if ans==out { return Ok(RunResult::Accepted);}
-                        else { return Ok(RunResult::WrongAnswer);}
+                        if let Some(spj) = problem.misc.get("special_judge") {
+                            let mut args: Vec<String> = serde_json::from_value(spj.clone()).unwrap();
+                            let pos = args.iter_mut().find(|item| {*item=="%OUTPUT%"}).unwrap();
+                            *pos = self.path("output");
+                            let pos = args.iter_mut().find(|item| {*item=="%ANSWER%"}).unwrap();
+                            *pos = case.answer_file.clone();
+                            let process = Command::new(&args[0])
+                                .args(&args[1..])
+                                .stdout(Stdio::piped()).spawn()?;
+                            let mut res = String::new();
+                            process.stdout.unwrap().read_to_string(&mut res).unwrap();
+                            let res: Vec<&str> = res.split('\n').map(|x| {x}).collect();
+                            let ret: RunResult = serde_json::from_value(
+                                json!(res[0].to_string())
+                                ).unwrap();
+                            info = res[1].to_string();
+                            return Ok(ret);
+                        } else {
+                            let ans = fs::read_to_string(&case.answer_file)?;
+                            let out = fs::read_to_string(self.path("output"))?;
+                            if ans==out { return Ok(RunResult::Accepted);}
+                            else { return Ok(RunResult::WrongAnswer);}
+                        }
                     }
                     return Ok(RunResult::RuntimeError);
                 },
@@ -186,6 +208,7 @@ impl Job {
         });
 
         self.case_res[caseidx].result = res;
+        self.case_res[caseidx].info = info;
         return ret;
     }
     fn path(&self, filename: &str) -> String {
@@ -267,9 +290,9 @@ mod test {
         let case1 = &problem.cases[0];
         let case2 = &problem.cases[1];
 
-        let res = job.run_one_case(case1, 1);
+        let res = job.run_one_case(problem, case1, 1);
         assert!(res);
-        let res = job.run_one_case(case2, 2);
+        let res = job.run_one_case(problem, case2, 2);
         assert!(res);
 
         job.clear();

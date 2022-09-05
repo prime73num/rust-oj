@@ -329,21 +329,21 @@ pub enum RunResult {
     Waiting,
     Running,
     Accepted,
-    #[serde(rename(serialize = "Compilation Error"))]
+    #[serde(rename(serialize = "Compilation Error", deserialize = "Compilation Error"))]
     CompilationError,
-    #[serde(rename(serialize = "Compilation Success"))]
+    #[serde(rename(serialize = "Compilation Success", deserialize = "Compilation Success"))]
     CompilationSuccess,
-    #[serde(rename(serialize = "Wrong Answer"))]
+    #[serde(rename(serialize = "Wrong Answer", deserialize = "Wrong Answer"))]
     WrongAnswer,
-    #[serde(rename(serialize = "Runtime Error"))]
+    #[serde(rename(serialize = "Runtime Error", deserialize = "Runtime Error"))]
     RuntimeError,
-    #[serde(rename(serialize = "Time Limit Exceeded"))]
+    #[serde(rename(serialize = "Time Limit Exceeded", deserialize = "Time Limit Exceeded"))]
     TimeLimitExceeded,
-    #[serde(rename(serialize = "Memory Limit Exceeded"))]
+    #[serde(rename(serialize = "Memory Limit Exceeded", deserialize = "Memory Limit Exceeded"))]
     MemoryLimitExceeded,
-    #[serde(rename(serialize = "System Error"))]
+    #[serde(rename(serialize = "System Error", deserialize = "System Error"))]
     SystemError,
-    #[serde(rename(serialize = "SPJ Error"))]
+    #[serde(rename(serialize = "SPJ Error", deserialize = "SPJ Error"))]
     SpjError,
     Skipped
 }
